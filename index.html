@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#050908">
-  <meta name="description" content="Mouse and touch controlled asteroid dodging game with standard and hardcore flight modes.">
+  <meta name="description" content="Mouse and touch controlled asteroid dodging game with Standard, Hardcore and No Hope flight modes.">
   <title>Space Ship // Asteroid Avoidance Lab</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
   <link rel="stylesheet" href="style.css">
@@ -13,7 +13,7 @@
   <main class="shell">
     <header class="hero">
       <div>
-        <p class="eyebrow">FLIGHT LAB // ASTEROID AVOIDANCE TEST // V1.1</p>
+        <p class="eyebrow">FLIGHT LAB // ASTEROID AVOIDANCE TEST // V1.2</p>
         <h1>Space Ship</h1>
         <p class="subtitle">Move the ship with your mouse or finger, dodge incoming rocks and survive for as long as basic piloting competence allows.</p>
       </div>
@@ -28,6 +28,7 @@
       <div class="mode-switch" role="group" aria-label="Flight profile">
         <button id="standardMode" class="mode-button active" type="button">STANDARD</button>
         <button id="hardcoreMode" class="mode-button danger" type="button">HARDCORE</button>
+        <button id="noHopeMode" class="mode-button void" type="button">NO HOPE</button>
       </div>
     </section>
 
@@ -59,8 +60,8 @@
         <div class="parameter-grid">
           <div><span>STANDARD HULL</span><strong>3 → max 5</strong></div>
           <div><span>HARDCORE HULL</span><strong>1 → max 3</strong></div>
+          <div><span>NO HOPE HULL</span><strong>1 / no repairs</strong></div>
           <div><span>OBSTACLES</span><strong>random rocks</strong></div>
-          <div><span>REPAIR PICKUP</span><strong>+1 life</strong></div>
         </div>
 
         <div class="status-box" id="statusBox">Flight computer ready. The asteroid field has agreed to be unreasonable.</div>
@@ -69,18 +70,19 @@
           <span><i class="swatch ship"></i> your ship</span>
           <span><i class="swatch asteroid"></i> asteroid</span>
           <span><i class="swatch repair"></i> repair cell</span>
+          <span><i class="swatch blackhole"></i> approaching black hole</span>
         </div>
 
         <div class="notes-block">
-          <p class="panel-label">HARDCORE NOTE</p>
-          <p>Hardcore starts with one life, spawns denser and faster rocks, increases lateral drift, ramps difficulty faster and makes repairs less common. Best scores are stored separately because comparing both modes would be fraud.</p>
+          <p class="panel-label">PROFILE NOTES</p>
+          <p><strong>Hardcore</strong> uses one initial life, denser and faster rocks and rarer repairs. <strong>No Hope</strong> gives one life, removes repairs completely, adds diagonal debris, and places an approaching black hole behind the field. The event horizon grows until the simulation eventually becomes physically unreasonable.</p>
         </div>
       </aside>
     </section>
 
     <footer>
       <span>NO WEAPONS // NO BRAKES // QUESTIONABLE INSURANCE</span>
-      <span>v1.1 // HARDCORE ENABLED</span>
+      <span>v1.2 // NO HOPE ENABLED</span>
     </footer>
   </main>
   <script src="script.js"></script>
