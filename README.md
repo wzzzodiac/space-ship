@@ -8,17 +8,34 @@ A small browser game about piloting a ship through an asteroid field without wea
 - On mobile, **press and drag** inside the game area.
 - Dodge asteroids of different sizes.
 - Every asteroid that leaves the screen safely counts as **one dodge**.
-- The ship starts with **3 lives**.
-- Colliding with an asteroid removes **1 life**.
-- Rare repair cells restore **+1 life**, up to a maximum of **5 lives**.
-- The asteroid field gradually becomes faster and denser.
-- Best score is stored locally in the browser.
+- Repair cells restore **+1 life**.
+- Best scores are stored locally in the browser.
+
+## Flight profiles
+
+### Standard
+
+- 3 initial lives
+- Maximum 5 lives
+- Normal asteroid density and speed ramp
+- More frequent repair cells
+
+### Hardcore
+
+- 1 initial life
+- Maximum 3 lives
+- Faster and denser asteroid field
+- Larger possible rocks and stronger lateral drift
+- Faster difficulty ramp
+- Rarer repair cells
+- Separate best score from Standard mode
 
 ## Controls
 
+- **STANDARD / HARDCORE** — choose the flight profile before starting.
 - **START FLIGHT** — begin a run.
 - **PAUSE / RESUME** — pause or continue.
-- **RESET** — return to the initial state.
+- **RESET** — reset the current profile.
 
 ## Tech
 
