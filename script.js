@@ -1,48 +1,530 @@
-const canvas=document.getElementById('gameCanvas');const ctx=canvas.getContext('2d');
-const $=id=>document.getElementById(id);
-const livesReadout=$('livesReadout'),scoreReadout=$('scoreReadout'),bestReadout=$('bestReadout'),statusReadout=$('statusReadout'),speedReadout=$('speedReadout'),modeReadout=$('modeReadout'),statusBox=$('statusBox');
-const startButton=$('startButton'),pauseButton=$('pauseButton'),resetButton=$('resetButton'),standardMode=$('standardMode'),hardcoreMode=$('hardcoreMode'),modeDescription=$('modeDescription');
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const $ = id => document.getElementById(id);
 
-const profiles={
-  standard:{name:'STANDARD',initialLives:3,maxLives:5,baseSpawn:.73,minSpawn:.29,spawnRamp:.0065,baseSpeed:[150,225],lateral:26,speedRamp:42,speedBonus:1.35,repairChance:.62,repairDelay:[8,14],rockSize:[15,42]},
-  hardcore:{name:'HARDCORE',initialLives:1,maxLives:3,baseSpawn:.54,minSpawn:.20,spawnRamp:.0085,baseSpeed:[190,285],lateral:48,speedRamp:30,speedBonus:1.75,repairChance:.38,repairDelay:[11,18],rockSize:[17,50]}
+const livesReadout = $('livesReadout');
+const scoreReadout = $('scoreReadout');
+const bestReadout = $('bestReadout');
+const statusReadout = $('statusReadout');
+const speedReadout = $('speedReadout');
+const modeReadout = $('modeReadout');
+const statusBox = $('statusBox');
+const startButton = $('startButton');
+const pauseButton = $('pauseButton');
+const resetButton = $('resetButton');
+const standardMode = $('standardMode');
+const hardcoreMode = $('hardcoreMode');
+const modeDescription = $('modeDescription');
+
+const profiles = {
+  standard: {
+    name: 'STANDARD',
+    initialLives: 3,
+    maxLives: 5,
+    baseSpawn: 0.73,
+    minSpawn: 0.29,
+    spawnRamp: 0.0065,
+    baseSpeed: [150, 225],
+    lateral: 26,
+    speedRamp: 42,
+    speedBonus: 1.35,
+    repairChance: 0.62,
+    repairDelay: [8, 14],
+    rockSize: [15, 42]
+  },
+  hardcore: {
+    name: 'HARDCORE',
+    initialLives: 1,
+    maxLives: 3,
+    baseSpawn: 0.54,
+    minSpawn: 0.20,
+    spawnRamp: 0.0085,
+    baseSpeed: [190, 285],
+    lateral: 48,
+    speedRamp: 30,
+    speedBonus: 1.75,
+    repairChance: 0.38,
+    repairDelay: [11, 18],
+    rockSize: [17, 50]
+  }
 };
-const state={mode:'standard',running:false,paused:false,gameOver:false,lives:3,maxLives:5,score:0,best:0,elapsed:0,lastTime:0,spawnTimer:0,repairTimer:0,invulnerable:0,pointerActive:false,stars:[],asteroids:[],repairs:[],particles:[],ship:{x:450,y:490,targetX:450,targetY:490,r:18}};
 
-function cfg(){return profiles[state.mode]}function clamp(v,a,b){return Math.max(a,Math.min(b,v))}function rand(a,b){return a+Math.random()*(b-a)}function setStatus(t){statusBox.textContent=t}
-function bestKey(){return`spaceShipBest_${state.mode}`}
-function loadBest(){state.best=Number(localStorage.getItem(bestKey())||0)}
-function resetStars(){state.stars=Array.from({length:95},()=>({x:Math.random()*canvas.width,y:Math.random()*canvas.height,s:rand(.7,2.2),v:rand(18,65),a:rand(.25,.85)}))}
-function resetGame(){const c=cfg();state.running=false;state.paused=false;state.gameOver=false;state.lives=c.initialLives;state.maxLives=c.maxLives;state.score=0;state.elapsed=0;state.lastTime=0;state.spawnTimer=0;state.repairTimer=state.mode==='hardcore'?7:3.5;state.invulnerable=0;state.asteroids=[];state.repairs=[];state.particles=[];state.ship.x=canvas.width*.5;state.ship.y=canvas.height*.79;state.ship.targetX=state.ship.x;state.ship.targetY=state.ship.y;loadBest();startButton.textContent='START FLIGHT';pauseButton.textContent='PAUSE';pauseButton.disabled=true;standardMode.disabled=false;hardcoreMode.disabled=false;setStatus(state.mode==='hardcore'?'HARDCORE armed. One life. Denser field. Excellent decision-making.':'Flight computer ready. The asteroid field has agreed to be unreasonable.');updateHud('STANDBY');draw()}
-function updateModeUI(){document.body.classList.toggle('hardcore',state.mode==='hardcore');standardMode.classList.toggle('active',state.mode==='standard');hardcoreMode.classList.toggle('active',state.mode==='hardcore');modeReadout.textContent=cfg().name;modeDescription.textContent=state.mode==='hardcore'?'HARDCORE // 1 initial life, denser/faster rocks, rarer repairs, separate best score.':'STANDARD // 3 initial lives, normal asteroid density, repair cells available.'}
-function setMode(mode){if(state.running)return;state.mode=mode;updateModeUI();resetGame()}
-function speedScale(){const c=cfg();return 1+Math.min(c.speedBonus,state.elapsed/c.speedRamp)}
-function updateHud(status){livesReadout.textContent=Array.from({length:state.lives},()=> '♥').join(' ')||'—';scoreReadout.textContent=String(state.score);bestReadout.textContent=String(state.best);statusReadout.textContent=status;modeReadout.textContent=cfg().name;speedReadout.textContent=`FIELD VELOCITY: ${speedScale().toFixed(2)}×`}
-function startGame(){if(state.gameOver)resetGame();if(state.running&&!state.paused)return;state.running=true;state.paused=false;state.gameOver=false;state.lastTime=performance.now();startButton.textContent='FLIGHT ACTIVE';pauseButton.disabled=false;pauseButton.textContent='PAUSE';standardMode.disabled=true;hardcoreMode.disabled=true;setStatus(state.mode==='hardcore'?'HARDCORE FLIGHT // the asteroid field has stopped pretending to be fair.':'Flight started. Try not to convert the ship into a geology sample.');updateHud('ACTIVE');requestAnimationFrame(loop)}
-function togglePause(){if(!state.running||state.gameOver)return;state.paused=!state.paused;pauseButton.textContent=state.paused?'RESUME':'PAUSE';updateHud(state.paused?'PAUSED':'ACTIVE');setStatus(state.paused?'Simulation paused. Asteroids reluctantly respect labor law.':'Flight resumed. Bad decisions continue.');if(!state.paused){state.lastTime=performance.now();requestAnimationFrame(loop)}}
-function endGame(){state.running=false;state.gameOver=true;pauseButton.disabled=true;standardMode.disabled=false;hardcoreMode.disabled=false;startButton.textContent='RESTART FLIGHT';if(state.score>state.best){state.best=state.score;localStorage.setItem(bestKey(),String(state.best))}updateHud('HULL LOST');const msg=state.mode==='hardcore'?`HARDCORE FAILED // ${state.score} dodges. You enabled this yourself XD.`:`MISSION FAILED // ${state.score} asteroids dodged before geology won.`;setStatus(msg);burst(state.ship.x,state.ship.y,'#ff6f7d',30);draw()}
-function spawnAsteroid(){const c=cfg(),r=rand(...c.rockSize),scale=speedScale();state.asteroids.push({x:rand(r+6,canvas.width-r-6),y:-r-20,r,vy:rand(...c.baseSpeed)*scale,vx:rand(-c.lateral,c.lateral),rot:rand(0,Math.PI*2),vr:rand(-1.3,1.3),vertices:Array.from({length:9},(_,i)=>({a:i/9*Math.PI*2,m:rand(.76,1.12)}))})}
-function spawnRepair(){state.repairs.push({x:rand(35,canvas.width-35),y:-30,r:14,vy:rand(120,155)*(state.mode==='hardcore'?1.15:1),pulse:Math.random()*Math.PI*2})}
-function circleHit(a,b,shrink=0){return Math.hypot(a.x-b.x,a.y-b.y)<a.r+b.r-shrink}
-function burst(x,y,color,count=14){for(let i=0;i<count;i++){const a=Math.random()*Math.PI*2,s=rand(45,180);state.particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rand(.3,.8),color})}}
-function damageShip(a){if(state.invulnerable>0)return;state.lives--;state.invulnerable=1.1;burst(state.ship.x,state.ship.y,'#ff6f7d',18);a.dead=true;if(state.lives<=0)endGame();else{updateHud('HIT / RECOVERING');setStatus(`HULL IMPACT // ${state.lives} ${state.lives===1?'life':'lives'} remaining.`)}}
-function collectRepair(r){r.dead=true;burst(r.x,r.y,'#86ff9b',18);if(state.lives<state.maxLives){state.lives++;setStatus(`REPAIR CELL ACQUIRED // hull restored to ${state.lives}/${state.maxLives}.`)}else setStatus('REPAIR CELL ACQUIRED // hull already at maximum. Wastefully healthy.')}
-function update(dt){const c=cfg();state.elapsed+=dt;state.invulnerable=Math.max(0,state.invulnerable-dt);const follow=1-Math.pow(.00045,dt);state.ship.x+=(state.ship.targetX-state.ship.x)*follow;state.ship.y+=(state.ship.targetY-state.ship.y)*follow;state.ship.x=clamp(state.ship.x,26,canvas.width-26);state.ship.y=clamp(state.ship.y,35,canvas.height-30);
-  for(const s of state.stars){s.y+=s.v*dt*(1+Math.min(1.3,state.elapsed/45));if(s.y>canvas.height+3){s.y=-3;s.x=Math.random()*canvas.width}}
-  const spawnEvery=Math.max(c.minSpawn,c.baseSpawn-state.elapsed*c.spawnRamp);state.spawnTimer+=dt;while(state.spawnTimer>=spawnEvery){state.spawnTimer-=spawnEvery;spawnAsteroid()}
-  state.repairTimer-=dt;if(state.repairTimer<=0){if(Math.random()<c.repairChance)spawnRepair();state.repairTimer=rand(...c.repairDelay)}
-  for(const a of state.asteroids){a.x+=a.vx*dt;a.y+=a.vy*dt;a.rot+=a.vr*dt;if(!a.dead&&circleHit(state.ship,a,5))damageShip(a);if(!a.dead&&a.y-a.r>canvas.height){a.dead=true;state.score++;if(state.score>state.best)state.best=state.score}}state.asteroids=state.asteroids.filter(a=>!a.dead);
-  for(const r of state.repairs){r.y+=r.vy*dt;r.pulse+=dt*4;if(!r.dead&&circleHit(state.ship,r,3))collectRepair(r);if(r.y-r.r>canvas.height)r.dead=true}state.repairs=state.repairs.filter(r=>!r.dead);
-  for(const p of state.particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=Math.pow(.08,dt);p.vy*=Math.pow(.08,dt);p.life-=dt}state.particles=state.particles.filter(p=>p.life>0);updateHud(state.invulnerable>0?'HIT / RECOVERING':'ACTIVE')}
-function drawBackground(){ctx.fillStyle=state.mode==='hardcore'?'#090506':'#030708';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.save();ctx.strokeStyle=state.mode==='hardcore'?'rgba(255,111,125,.035)':'rgba(105,240,193,.035)';for(let x=0;x<=canvas.width;x+=45){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke()}for(let y=0;y<=canvas.height;y+=45){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke()}ctx.restore();for(const s of state.stars){ctx.globalAlpha=s.a;ctx.fillStyle='#dceae5';ctx.fillRect(s.x,s.y,s.s,s.s)}ctx.globalAlpha=1}
-function drawShip(){const s=state.ship,blink=state.invulnerable>0&&Math.floor(state.invulnerable*12)%2===0;if(blink)return;ctx.save();ctx.translate(s.x,s.y);ctx.strokeStyle=state.mode==='hardcore'?'#ff6f7d':'#5fd1ff';ctx.fillStyle=state.mode==='hardcore'?'#281014':'#0b2328';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(0,-24);ctx.lineTo(18,18);ctx.lineTo(7,13);ctx.lineTo(0,21);ctx.lineTo(-7,13);ctx.lineTo(-18,18);ctx.closePath();ctx.fill();ctx.stroke();ctx.strokeStyle='#69f0c1';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-15);ctx.lineTo(0,10);ctx.stroke();const flame=11+Math.random()*8;ctx.strokeStyle='#e7d65e';ctx.lineWidth=3;for(const x of[-6,6]){ctx.beginPath();ctx.moveTo(x,20);ctx.lineTo(x,20+flame);ctx.stroke()}ctx.restore()}
-function drawAsteroid(a){ctx.save();ctx.translate(a.x,a.y);ctx.rotate(a.rot);ctx.fillStyle='#5f6764';ctx.strokeStyle=state.mode==='hardcore'?'#d6a4a8':'#aab5b0';ctx.lineWidth=2;ctx.beginPath();a.vertices.forEach((v,i)=>{const x=Math.cos(v.a)*a.r*v.m,y=Math.sin(v.a)*a.r*v.m;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle='rgba(15,20,19,.35)';ctx.beginPath();ctx.arc(-a.r*.23,-a.r*.08,a.r*.2,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(a.r*.27,a.r*.2,a.r*.13,0,Math.PI*2);ctx.fill();ctx.restore()}
-function drawRepair(r){const pulse=1+Math.sin(r.pulse)*.12;ctx.save();ctx.translate(r.x,r.y);ctx.scale(pulse,pulse);ctx.fillStyle='rgba(134,255,155,.10)';ctx.strokeStyle='#86ff9b';ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,r.r+5,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#86ff9b';ctx.fillRect(-3,-10,6,20);ctx.fillRect(-10,-3,20,6);ctx.restore()}
-function drawParticles(){for(const p of state.particles){ctx.globalAlpha=clamp(p.life*2,0,1);ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,3,3)}ctx.globalAlpha=1}
-function drawOverlay(){if(state.running&&!state.paused)return;ctx.save();ctx.fillStyle='rgba(3,7,8,.64)';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.textAlign='center';ctx.fillStyle='#dceae5';ctx.font='700 28px Courier New';ctx.fillText(state.gameOver?'HULL LOST':state.paused?'SIMULATION PAUSED':state.mode==='hardcore'?'HARDCORE FIELD STANDBY':'ASTEROID FIELD STANDBY',canvas.width/2,canvas.height/2-12);ctx.fillStyle=state.mode==='hardcore'?'#ff6f7d':'#69f0c1';ctx.font='15px Courier New';ctx.fillText(state.gameOver?`FINAL DODGES: ${state.score}`:state.paused?'press RESUME to continue':'press START FLIGHT',canvas.width/2,canvas.height/2+24);ctx.restore()}
-function draw(){drawBackground();for(const a of state.asteroids)drawAsteroid(a);for(const r of state.repairs)drawRepair(r);drawParticles();drawShip();drawOverlay()}
-function loop(now){if(!state.running||state.paused||state.gameOver)return;const dt=Math.min(.035,(now-state.lastTime)/1000||0);state.lastTime=now;update(dt);draw();if(state.running&&!state.paused&&!state.gameOver)requestAnimationFrame(loop)}
-function pointerToCanvas(e){const rect=canvas.getBoundingClientRect();return{x:(e.clientX-rect.left)*canvas.width/rect.width,y:(e.clientY-rect.top)*canvas.height/rect.height}}
-canvas.addEventListener('pointerdown',e=>{e.preventDefault();state.pointerActive=true;canvas.setPointerCapture?.(e.pointerId);const p=pointerToCanvas(e);state.ship.targetX=p.x;state.ship.targetY=p.y});canvas.addEventListener('pointermove',e=>{if(e.pointerType!=='mouse'&&!state.pointerActive)return;const p=pointerToCanvas(e);state.ship.targetX=p.x;state.ship.targetY=p.y});canvas.addEventListener('pointerup',e=>{state.pointerActive=false;canvas.releasePointerCapture?.(e.pointerId)});canvas.addEventListener('pointercancel',()=>state.pointerActive=false);
-startButton.addEventListener('click',startGame);pauseButton.addEventListener('click',togglePause);resetButton.addEventListener('click',resetGame);standardMode.addEventListener('click',()=>setMode('standard'));hardcoreMode.addEventListener('click',()=>setMode('hardcore'));
-resetStars();updateModeUI();resetGame();
+const state = {
+  mode: 'standard',
+  running: false,
+  paused: false,
+  gameOver: false,
+  lives: 3,
+  maxLives: 5,
+  score: 0,
+  best: 0,
+  elapsed: 0,
+  lastTime: 0,
+  spawnTimer: 0,
+  repairTimer: 0,
+  invulnerable: 0,
+  pointerActive: false,
+  stars: [],
+  asteroids: [],
+  repairs: [],
+  particles: [],
+  ship: { x: 450, y: 490, targetX: 450, targetY: 490, r: 18 }
+};
+
+function cfg() { return profiles[state.mode]; }
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+function rand(a, b) { return a + Math.random() * (b - a); }
+function setStatus(text) { statusBox.textContent = text; }
+function bestKey() { return `spaceShipBest_${state.mode}`; }
+function loadBest() { state.best = Number(localStorage.getItem(bestKey()) || 0); }
+
+function resetStars() {
+  state.stars = Array.from({ length: 95 }, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    s: rand(0.7, 2.2),
+    v: rand(18, 65),
+    a: rand(0.25, 0.85)
+  }));
+}
+
+function updateModeUI() {
+  const hardcore = state.mode === 'hardcore';
+  document.body.classList.toggle('hardcore', hardcore);
+  standardMode.classList.toggle('active', !hardcore);
+  hardcoreMode.classList.toggle('active', hardcore);
+  modeReadout.textContent = cfg().name;
+  modeDescription.textContent = hardcore
+    ? 'HARDCORE // 1 initial life, denser/faster rocks, rarer repairs, separate best score.'
+    : 'STANDARD // 3 initial lives, normal asteroid density, repair cells available.';
+}
+
+function resetGame(customStatus = null) {
+  const c = cfg();
+  state.running = false;
+  state.paused = false;
+  state.gameOver = false;
+  state.lives = c.initialLives;
+  state.maxLives = c.maxLives;
+  state.score = 0;
+  state.elapsed = 0;
+  state.lastTime = 0;
+  state.spawnTimer = 0;
+  state.repairTimer = state.mode === 'hardcore' ? 7 : 3.5;
+  state.invulnerable = 0;
+  state.asteroids = [];
+  state.repairs = [];
+  state.particles = [];
+  state.ship.x = canvas.width * 0.5;
+  state.ship.y = canvas.height * 0.79;
+  state.ship.targetX = state.ship.x;
+  state.ship.targetY = state.ship.y;
+  loadBest();
+  startButton.textContent = 'START FLIGHT';
+  pauseButton.textContent = 'PAUSE';
+  pauseButton.disabled = true;
+  standardMode.disabled = false;
+  hardcoreMode.disabled = false;
+  updateModeUI();
+  setStatus(customStatus || (state.mode === 'hardcore'
+    ? 'HARDCORE armed. One life. Denser field. Excellent decision-making.'
+    : 'Flight computer ready. The asteroid field has agreed to be unreasonable.'));
+  updateHud('STANDBY');
+  draw();
+}
+
+function setMode(mode) {
+  if (!profiles[mode] || mode === state.mode) {
+    updateModeUI();
+    return;
+  }
+
+  const interruptedRun = state.running || state.paused;
+  state.running = false;
+  state.paused = false;
+  state.mode = mode;
+
+  resetGame(interruptedRun
+    ? `${cfg().name} profile loaded. Previous flight aborted because difficulty changes are not retroactive XD.`
+    : `${cfg().name} profile loaded. Flight computer reconfigured.`);
+}
+
+function speedScale() {
+  const c = cfg();
+  return 1 + Math.min(c.speedBonus, state.elapsed / c.speedRamp);
+}
+
+function updateHud(status) {
+  livesReadout.textContent = Array.from({ length: state.lives }, () => '♥').join(' ') || '—';
+  scoreReadout.textContent = String(state.score);
+  bestReadout.textContent = String(state.best);
+  statusReadout.textContent = status;
+  modeReadout.textContent = cfg().name;
+  speedReadout.textContent = `FIELD VELOCITY: ${speedScale().toFixed(2)}×`;
+}
+
+function startGame() {
+  if (state.gameOver) resetGame();
+  if (state.running && !state.paused) return;
+  state.running = true;
+  state.paused = false;
+  state.gameOver = false;
+  state.lastTime = performance.now();
+  startButton.textContent = 'FLIGHT ACTIVE';
+  pauseButton.disabled = false;
+  pauseButton.textContent = 'PAUSE';
+  setStatus(state.mode === 'hardcore'
+    ? 'HARDCORE FLIGHT // the asteroid field has stopped pretending to be fair.'
+    : 'Flight started. Try not to convert the ship into a geology sample.');
+  updateHud('ACTIVE');
+  requestAnimationFrame(loop);
+}
+
+function togglePause() {
+  if (!state.running || state.gameOver) return;
+  state.paused = !state.paused;
+  pauseButton.textContent = state.paused ? 'RESUME' : 'PAUSE';
+  updateHud(state.paused ? 'PAUSED' : 'ACTIVE');
+  setStatus(state.paused
+    ? 'Simulation paused. Asteroids reluctantly respect labor law.'
+    : 'Flight resumed. Bad decisions continue.');
+  if (!state.paused) {
+    state.lastTime = performance.now();
+    requestAnimationFrame(loop);
+  }
+}
+
+function endGame() {
+  state.running = false;
+  state.gameOver = true;
+  pauseButton.disabled = true;
+  startButton.textContent = 'RESTART FLIGHT';
+  if (state.score > state.best) {
+    state.best = state.score;
+    localStorage.setItem(bestKey(), String(state.best));
+  }
+  updateHud('HULL LOST');
+  setStatus(state.mode === 'hardcore'
+    ? `HARDCORE FAILED // ${state.score} dodges. You enabled this yourself XD.`
+    : `MISSION FAILED // ${state.score} asteroids dodged before geology won.`);
+  burst(state.ship.x, state.ship.y, '#ff6f7d', 30);
+  draw();
+}
+
+function spawnAsteroid() {
+  const c = cfg();
+  const r = rand(...c.rockSize);
+  const scale = speedScale();
+  state.asteroids.push({
+    x: rand(r + 6, canvas.width - r - 6),
+    y: -r - 20,
+    r,
+    vy: rand(...c.baseSpeed) * scale,
+    vx: rand(-c.lateral, c.lateral),
+    rot: rand(0, Math.PI * 2),
+    vr: rand(-1.3, 1.3),
+    vertices: Array.from({ length: 9 }, (_, i) => ({
+      a: i / 9 * Math.PI * 2,
+      m: rand(0.76, 1.12)
+    }))
+  });
+}
+
+function spawnRepair() {
+  state.repairs.push({
+    x: rand(35, canvas.width - 35),
+    y: -30,
+    r: 14,
+    vy: rand(120, 155) * (state.mode === 'hardcore' ? 1.15 : 1),
+    pulse: Math.random() * Math.PI * 2
+  });
+}
+
+function circleHit(a, b, shrink = 0) {
+  return Math.hypot(a.x - b.x, a.y - b.y) < a.r + b.r - shrink;
+}
+
+function burst(x, y, color, count = 14) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = rand(45, 180);
+    state.particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: rand(0.3, 0.8),
+      color
+    });
+  }
+}
+
+function damageShip(asteroid) {
+  if (state.invulnerable > 0) return;
+  state.lives--;
+  state.invulnerable = 1.1;
+  burst(state.ship.x, state.ship.y, '#ff6f7d', 18);
+  asteroid.dead = true;
+  if (state.lives <= 0) endGame();
+  else {
+    updateHud('HIT / RECOVERING');
+    setStatus(`HULL IMPACT // ${state.lives} ${state.lives === 1 ? 'life' : 'lives'} remaining.`);
+  }
+}
+
+function collectRepair(repair) {
+  repair.dead = true;
+  burst(repair.x, repair.y, '#86ff9b', 18);
+  if (state.lives < state.maxLives) {
+    state.lives++;
+    setStatus(`REPAIR CELL ACQUIRED // hull restored to ${state.lives}/${state.maxLives}.`);
+  } else {
+    setStatus('REPAIR CELL ACQUIRED // hull already at maximum. Wastefully healthy.');
+  }
+}
+
+function update(dt) {
+  const c = cfg();
+  state.elapsed += dt;
+  state.invulnerable = Math.max(0, state.invulnerable - dt);
+
+  const follow = 1 - Math.pow(0.00045, dt);
+  state.ship.x += (state.ship.targetX - state.ship.x) * follow;
+  state.ship.y += (state.ship.targetY - state.ship.y) * follow;
+  state.ship.x = clamp(state.ship.x, 26, canvas.width - 26);
+  state.ship.y = clamp(state.ship.y, 35, canvas.height - 30);
+
+  for (const star of state.stars) {
+    star.y += star.v * dt * (1 + Math.min(1.3, state.elapsed / 45));
+    if (star.y > canvas.height + 3) {
+      star.y = -3;
+      star.x = Math.random() * canvas.width;
+    }
+  }
+
+  const spawnEvery = Math.max(c.minSpawn, c.baseSpawn - state.elapsed * c.spawnRamp);
+  state.spawnTimer += dt;
+  while (state.spawnTimer >= spawnEvery) {
+    state.spawnTimer -= spawnEvery;
+    spawnAsteroid();
+  }
+
+  state.repairTimer -= dt;
+  if (state.repairTimer <= 0) {
+    if (Math.random() < c.repairChance) spawnRepair();
+    state.repairTimer = rand(...c.repairDelay);
+  }
+
+  for (const asteroid of state.asteroids) {
+    asteroid.x += asteroid.vx * dt;
+    asteroid.y += asteroid.vy * dt;
+    asteroid.rot += asteroid.vr * dt;
+    if (!asteroid.dead && circleHit(state.ship, asteroid, 5)) damageShip(asteroid);
+    if (!asteroid.dead && asteroid.y - asteroid.r > canvas.height) {
+      asteroid.dead = true;
+      state.score++;
+      if (state.score > state.best) state.best = state.score;
+    }
+  }
+  state.asteroids = state.asteroids.filter(a => !a.dead);
+
+  for (const repair of state.repairs) {
+    repair.y += repair.vy * dt;
+    repair.pulse += dt * 4;
+    if (!repair.dead && circleHit(state.ship, repair, 3)) collectRepair(repair);
+    if (repair.y - repair.r > canvas.height) repair.dead = true;
+  }
+  state.repairs = state.repairs.filter(r => !r.dead);
+
+  for (const particle of state.particles) {
+    particle.x += particle.vx * dt;
+    particle.y += particle.vy * dt;
+    particle.vx *= Math.pow(0.08, dt);
+    particle.vy *= Math.pow(0.08, dt);
+    particle.life -= dt;
+  }
+  state.particles = state.particles.filter(p => p.life > 0);
+
+  updateHud(state.invulnerable > 0 ? 'HIT / RECOVERING' : 'ACTIVE');
+}
+
+function drawBackground() {
+  ctx.fillStyle = state.mode === 'hardcore' ? '#100406' : '#030708';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  ctx.strokeStyle = state.mode === 'hardcore' ? 'rgba(255,72,91,.075)' : 'rgba(105,240,193,.035)';
+  for (let x = 0; x <= canvas.width; x += 45) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+  }
+  for (let y = 0; y <= canvas.height; y += 45) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+  }
+  ctx.restore();
+
+  for (const star of state.stars) {
+    ctx.globalAlpha = star.a;
+    ctx.fillStyle = state.mode === 'hardcore' ? '#ffd9dc' : '#dceae5';
+    ctx.fillRect(star.x, star.y, star.s, star.s);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawShip() {
+  const ship = state.ship;
+  const blink = state.invulnerable > 0 && Math.floor(state.invulnerable * 12) % 2 === 0;
+  if (blink) return;
+
+  ctx.save();
+  ctx.translate(ship.x, ship.y);
+  ctx.strokeStyle = state.mode === 'hardcore' ? '#ff485b' : '#5fd1ff';
+  ctx.fillStyle = state.mode === 'hardcore' ? '#321015' : '#0b2328';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(0, -24);
+  ctx.lineTo(18, 18);
+  ctx.lineTo(7, 13);
+  ctx.lineTo(0, 21);
+  ctx.lineTo(-7, 13);
+  ctx.lineTo(-18, 18);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.strokeStyle = state.mode === 'hardcore' ? '#ff9aa4' : '#69f0c1';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(0, 10); ctx.stroke();
+
+  const flame = 11 + Math.random() * 8;
+  ctx.strokeStyle = state.mode === 'hardcore' ? '#ffb34d' : '#e7d65e';
+  ctx.lineWidth = 3;
+  for (const x of [-6, 6]) {
+    ctx.beginPath(); ctx.moveTo(x, 20); ctx.lineTo(x, 20 + flame); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawAsteroid(asteroid) {
+  ctx.save();
+  ctx.translate(asteroid.x, asteroid.y);
+  ctx.rotate(asteroid.rot);
+  ctx.fillStyle = state.mode === 'hardcore' ? '#6e4b4f' : '#5f6764';
+  ctx.strokeStyle = state.mode === 'hardcore' ? '#e5a4aa' : '#aab5b0';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  asteroid.vertices.forEach((v, i) => {
+    const x = Math.cos(v.a) * asteroid.r * v.m;
+    const y = Math.sin(v.a) * asteroid.r * v.m;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(15,20,19,.35)';
+  ctx.beginPath(); ctx.arc(-asteroid.r * .23, -asteroid.r * .08, asteroid.r * .2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(asteroid.r * .27, asteroid.r * .2, asteroid.r * .13, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function drawRepair(repair) {
+  const pulse = 1 + Math.sin(repair.pulse) * .12;
+  ctx.save();
+  ctx.translate(repair.x, repair.y);
+  ctx.scale(pulse, pulse);
+  ctx.fillStyle = 'rgba(134,255,155,.10)';
+  ctx.strokeStyle = '#86ff9b';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(0, 0, repair.r + 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#86ff9b';
+  ctx.fillRect(-3, -10, 6, 20);
+  ctx.fillRect(-10, -3, 20, 6);
+  ctx.restore();
+}
+
+function drawParticles() {
+  for (const particle of state.particles) {
+    ctx.globalAlpha = clamp(particle.life * 2, 0, 1);
+    ctx.fillStyle = particle.color;
+    ctx.fillRect(particle.x, particle.y, 3, 3);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawOverlay() {
+  if (state.running && !state.paused) return;
+  ctx.save();
+  ctx.fillStyle = state.mode === 'hardcore' ? 'rgba(20,3,6,.70)' : 'rgba(3,7,8,.64)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#dceae5';
+  ctx.font = '700 28px Courier New';
+  ctx.fillText(
+    state.gameOver ? 'HULL LOST' : state.paused ? 'SIMULATION PAUSED' : state.mode === 'hardcore' ? 'HARDCORE FIELD STANDBY' : 'ASTEROID FIELD STANDBY',
+    canvas.width / 2,
+    canvas.height / 2 - 12
+  );
+  ctx.fillStyle = state.mode === 'hardcore' ? '#ff485b' : '#69f0c1';
+  ctx.font = '15px Courier New';
+  ctx.fillText(
+    state.gameOver ? `FINAL DODGES: ${state.score}` : state.paused ? 'press RESUME to continue' : 'press START FLIGHT',
+    canvas.width / 2,
+    canvas.height / 2 + 24
+  );
+  ctx.restore();
+}
+
+function draw() {
+  drawBackground();
+  for (const asteroid of state.asteroids) drawAsteroid(asteroid);
+  for (const repair of state.repairs) drawRepair(repair);
+  drawParticles();
+  drawShip();
+  drawOverlay();
+}
+
+function loop(now) {
+  if (!state.running || state.paused || state.gameOver) return;
+  const dt = Math.min(0.035, (now - state.lastTime) / 1000 || 0);
+  state.lastTime = now;
+  update(dt);
+  draw();
+  if (state.running && !state.paused && !state.gameOver) requestAnimationFrame(loop);
+}
+
+function pointerToCanvas(event) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (event.clientX - rect.left) * canvas.width / rect.width,
+    y: (event.clientY - rect.top) * canvas.height / rect.height
+  };
+}
+
+canvas.addEventListener('pointerdown', event => {
+  event.preventDefault();
+  state.pointerActive = true;
+  canvas.setPointerCapture?.(event.pointerId);
+  const p = pointerToCanvas(event);
+  state.ship.targetX = p.x;
+  state.ship.targetY = p.y;
+});
+
+canvas.addEventListener('pointermove', event => {
+  if (event.pointerType !== 'mouse' && !state.pointerActive) return;
+  const p = pointerToCanvas(event);
+  state.ship.targetX = p.x;
+  state.ship.targetY = p.y;
+});
+
+canvas.addEventListener('pointerup', event => {
+  state.pointerActive = false;
+  canvas.releasePointerCapture?.(event.pointerId);
+});
+canvas.addEventListener('pointercancel', () => { state.pointerActive = false; });
+
+startButton.addEventListener('click', startGame);
+pauseButton.addEventListener('click', togglePause);
+resetButton.addEventListener('click', () => resetGame());
+standardMode.addEventListener('click', () => setMode('standard'));
+hardcoreMode.addEventListener('click', () => setMode('hardcore'));
+
+resetStars();
+updateModeUI();
+resetGame();
