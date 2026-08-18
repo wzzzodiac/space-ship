@@ -1,229 +1,341 @@
-// No Hope visual override — v1.4.1
-// Keeps gameplay untouched; only replaces black-hole/background/glare rendering.
+// No Hope renderer bridge — Black Hole V1 integration
+// Gameplay stays on Canvas 2D. The finished Black Hole V1 shader runs on a WebGL layer underneath it.
+
+const noHopeStage = document.createElement('div');
+noHopeStage.className = 'nohope-stage';
+canvas.parentNode.insertBefore(noHopeStage, canvas);
+noHopeStage.appendChild(canvas);
+
+let noHopeWebGLReady = false;
+let noHopeWebGLCanvas = null;
 
 blackHoleGeometry = function () {
   const p = noHopeProgress();
-  return {
-    x: canvas.width * 0.5,
-    y: -110 + p * 175,
-    radius: 42 + p * 160,
-    disk: 170 + p * 230,
-    thickness: 24 + p * 42,
-    p
-  };
+  return { x: canvas.width * 0.5, y: canvas.height * 0.5, radius: 0, disk: 0, thickness: 0, p };
 };
 
-drawBlackHole = function () {
-  if (state.mode !== 'nohope') return;
-
-  const bh = blackHoleGeometry();
-  const t = performance.now() * 0.001;
-  const hot = 0.28 + bh.p * 0.72;
-  const pulse = 0.94 + Math.sin(t * 1.35) * 0.06;
-
-  ctx.save();
-  ctx.translate(bh.x, bh.y);
-  ctx.rotate(-0.055);
-
-  // Broad white/warm halo. This is deliberately soft so the core still reads as black.
-  ctx.globalCompositeOperation = 'screen';
-  const halo = ctx.createRadialGradient(0, 0, bh.radius * 0.72, 0, 0, bh.disk * 1.08);
-  halo.addColorStop(0, 'rgba(255,255,255,0)');
-  halo.addColorStop(0.16, `rgba(255,248,232,${0.10 + hot * 0.14})`);
-  halo.addColorStop(0.31, `rgba(255,236,204,${0.08 + hot * 0.13})`);
-  halo.addColorStop(0.60, `rgba(221,229,255,${0.03 + hot * 0.08})`);
-  halo.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = halo;
-  ctx.beginPath();
-  ctx.arc(0, 0, bh.disk * 1.08, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Lensed light above and below the event horizon.
-  ctx.shadowColor = `rgba(255,247,225,${0.45 + bh.p * 0.42})`;
-  ctx.shadowBlur = 12 + bh.p * 30;
-  for (let i = 0; i < 8; i++) {
-    const spread = i * 0.038;
-    const rx = bh.radius * (1.06 + spread);
-    const ry = bh.radius * (1.03 + spread * 0.72);
-    const a = (0.18 + bh.p * 0.22) * (1 - i * 0.085);
-    ctx.strokeStyle = `rgba(255,250,238,${a})`;
-    ctx.lineWidth = 1.4 + bh.p * 2.7 + (7 - i) * 0.18;
-
-    ctx.beginPath();
-    ctx.ellipse(0, -bh.radius * 0.015, rx, ry, 0, Math.PI * 1.04, Math.PI * 1.96);
-    ctx.stroke();
-
-    if (i < 5) {
-      ctx.strokeStyle = `rgba(255,221,177,${a * 0.58})`;
-      ctx.beginPath();
-      ctx.ellipse(0, bh.radius * 0.035, rx * 1.02, ry * 0.99, 0, Math.PI * 0.04, Math.PI * 0.96);
-      ctx.stroke();
-    }
-  }
-
-  // Back half of the accretion disk: many moving streaks instead of one Saturn-like ring.
-  ctx.shadowBlur = 16 + bh.p * 34;
-  const backGradient = ctx.createLinearGradient(-bh.disk, 0, bh.disk, 0);
-  backGradient.addColorStop(0, 'rgba(255,183,115,0)');
-  backGradient.addColorStop(0.13, `rgba(255,177,105,${0.18 + hot * 0.22})`);
-  backGradient.addColorStop(0.38, `rgba(255,235,198,${0.52 + hot * 0.34})`);
-  backGradient.addColorStop(0.50, `rgba(255,255,249,${0.72 + hot * 0.24})`);
-  backGradient.addColorStop(0.62, `rgba(255,232,191,${0.48 + hot * 0.31})`);
-  backGradient.addColorStop(0.88, `rgba(255,166,96,${0.15 + hot * 0.18})`);
-  backGradient.addColorStop(1, 'rgba(255,172,101,0)');
-
-  for (let i = 0; i < 34; i++) {
-    const n = i / 33;
-    const y = (n - 0.5) * bh.thickness * 1.15;
-    const wave = Math.sin(t * (1.8 + n * 0.9) + i * 1.17) * (2 + bh.p * 3.5);
-    const tilt = (n - 0.5) * 10;
-    ctx.strokeStyle = backGradient;
-    ctx.globalAlpha = (0.30 + Math.sin(i * 2.31 + t * 2.4) * 0.08) * pulse;
-    ctx.lineWidth = 1.1 + (1 - Math.abs(n - 0.5) * 2) * (2.2 + bh.p * 2.0);
-    ctx.beginPath();
-    ctx.moveTo(-bh.disk, y + wave);
-    ctx.bezierCurveTo(-bh.radius * 2.0, y - 10 - tilt, bh.radius * 2.0, y + 10 + tilt, bh.disk, y - wave * 0.55);
-    ctx.stroke();
-  }
-
-  // Side lensing: the disk appears to climb around the hole instead of staying a flat ellipse.
-  ctx.globalAlpha = 1;
-  ctx.lineCap = 'round';
-  for (const side of [-1, 1]) {
-    for (let i = 0; i < 5; i++) {
-      const offset = i * 6;
-      const a = (0.18 + bh.p * 0.28) * (1 - i * 0.13);
-      ctx.strokeStyle = i < 2 ? `rgba(255,253,244,${a})` : `rgba(255,210,160,${a * 0.72})`;
-      ctx.lineWidth = 2 + bh.p * 3 - i * 0.18;
-      ctx.beginPath();
-      ctx.moveTo(side * bh.disk * 0.64, -bh.thickness * 0.18 + offset * 0.12);
-      ctx.bezierCurveTo(
-        side * bh.radius * 1.56, -bh.radius * (0.52 + i * 0.03),
-        side * bh.radius * 1.05, -bh.radius * (1.03 + i * 0.025),
-        side * bh.radius * 0.18, -bh.radius * (1.12 + i * 0.018)
-      );
-      ctx.stroke();
-    }
-  }
-
-  // Event horizon: pure black, drawn after the rear disk so it actually occludes it.
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.shadowBlur = 0;
-  const core = ctx.createRadialGradient(-bh.radius * 0.18, -bh.radius * 0.12, 0, 0, 0, bh.radius);
-  core.addColorStop(0, '#000');
-  core.addColorStop(0.86, '#000');
-  core.addColorStop(1, '#010101');
-  ctx.fillStyle = core;
-  ctx.beginPath();
-  ctx.arc(0, 0, bh.radius, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Photon ring: thin and painfully bright, not a giant planetary outline.
-  ctx.globalCompositeOperation = 'screen';
-  ctx.shadowColor = `rgba(255,255,250,${0.78 + bh.p * 0.20})`;
-  ctx.shadowBlur = 8 + bh.p * 18;
-  ctx.strokeStyle = `rgba(255,255,248,${0.72 + bh.p * 0.24})`;
-  ctx.lineWidth = 1.6 + bh.p * 2.2;
-  ctx.beginPath();
-  ctx.arc(0, 0, bh.radius * 1.018, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // Front half of the accretion disk crosses the black core, like the familiar lensing silhouette.
-  ctx.shadowBlur = 14 + bh.p * 28;
-  for (let i = 0; i < 18; i++) {
-    const n = i / 17;
-    const y = bh.thickness * (0.02 + n * 0.52);
-    const wave = Math.sin(t * 2.1 + i * 1.63) * (1.5 + bh.p * 2.4);
-    ctx.strokeStyle = backGradient;
-    ctx.globalAlpha = (0.34 + (1 - n) * 0.32) * pulse;
-    ctx.lineWidth = 1.5 + (1 - n) * (2.4 + bh.p * 2.4);
-    ctx.beginPath();
-    ctx.moveTo(-bh.disk, y + wave);
-    ctx.bezierCurveTo(-bh.radius * 1.7, y - 5, bh.radius * 1.7, y + 5, bh.disk, y - wave * 0.4);
-    ctx.stroke();
-  }
-
-  // A few fast bright filaments make the disk feel alive instead of like a static logo.
-  for (let i = 0; i < 9; i++) {
-    const phase = (t * (0.16 + i * 0.014) + i * 0.113) % 1;
-    const x = -bh.disk + phase * bh.disk * 2;
-    const width = bh.disk * (0.07 + (i % 3) * 0.018);
-    const filament = ctx.createLinearGradient(x - width, 0, x + width, 0);
-    filament.addColorStop(0, 'rgba(255,255,255,0)');
-    filament.addColorStop(0.5, `rgba(255,255,248,${0.23 + bh.p * 0.28})`);
-    filament.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.strokeStyle = filament;
-    ctx.globalAlpha = 0.78;
-    ctx.lineWidth = 1.2 + bh.p * 1.8;
-    ctx.beginPath();
-    ctx.moveTo(x - width, bh.thickness * 0.18 + Math.sin(i + t) * 4);
-    ctx.lineTo(x + width, bh.thickness * 0.18 + Math.cos(i * 1.7 + t) * 4);
-    ctx.stroke();
-  }
-
-  ctx.restore();
-};
+// No Hope now reveals the WebGL V1 renderer instead of drawing the old Canvas 2D black hole.
+drawBlackHole = function () {};
 
 drawBackground = function () {
-  ctx.fillStyle = state.mode === 'nohope' ? '#010102' : state.mode === 'hardcore' ? '#100406' : '#030708';
+  if (state.mode === 'nohope') {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    return;
+  }
+
+  ctx.fillStyle = state.mode === 'hardcore' ? '#100406' : '#030708';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Grid and stars belong behind the black hole, not painted on top of the event horizon.
   ctx.save();
-  ctx.strokeStyle = state.mode === 'nohope' ? 'rgba(162,126,255,.025)' : state.mode === 'hardcore' ? 'rgba(255,72,91,.075)' : 'rgba(105,240,193,.035)';
+  ctx.strokeStyle = state.mode === 'hardcore' ? 'rgba(255,72,91,.075)' : 'rgba(105,240,193,.035)';
   for (let x = 0; x <= canvas.width; x += 45) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke(); }
   for (let y = 0; y <= canvas.height; y += 45) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke(); }
   ctx.restore();
 
   for (const star of state.stars) {
-    ctx.globalAlpha = state.mode === 'nohope' ? star.a * (1 - noHopeProgress() * 0.62) : star.a;
-    ctx.fillStyle = state.mode === 'hardcore' ? '#ffd9dc' : state.mode === 'nohope' ? '#d8d4df' : '#dceae5';
+    ctx.globalAlpha = star.a;
+    ctx.fillStyle = state.mode === 'hardcore' ? '#ffd9dc' : '#dceae5';
     ctx.fillRect(star.x, star.y, star.s, star.s);
   }
   ctx.globalAlpha = 1;
-
-  if (state.mode === 'nohope') drawBlackHole();
-
-  if (state.mode === 'nohope') {
-    const p = noHopeProgress();
-    const vignette = ctx.createRadialGradient(canvas.width / 2, canvas.height * 0.46, 120, canvas.width / 2, canvas.height * 0.46, 700);
-    vignette.addColorStop(0, 'rgba(0,0,0,0)');
-    vignette.addColorStop(1, `rgba(0,0,0,${0.18 + p * 0.28})`);
-    ctx.fillStyle = vignette;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }
 };
 
-drawNoHopeGlare = function () {
-  if (state.mode !== 'nohope') return;
-  const bh = blackHoleGeometry();
-  const late = Math.pow(bh.p, 3.0);
-  if (late < 0.002) return;
+// V1 already contains its own halo/exposure behavior; do not stack the old No Hope glare on top.
+drawNoHopeGlare = function () {};
 
-  ctx.save();
-  ctx.globalCompositeOperation = 'screen';
+(async () => {
+  const THREE = await import('https://cdn.jsdelivr.net/npm/three@0.185.0/build/three.module.js');
 
-  // White bloom centred on the source; this sits over the rocks on purpose.
-  const bloom = ctx.createRadialGradient(
-    bh.x, bh.y, Math.max(8, bh.radius * 0.72),
-    bh.x, bh.y, Math.max(canvas.width, canvas.height) * 0.92
-  );
-  bloom.addColorStop(0, `rgba(255,252,244,${0.08 + late * 0.46})`);
-  bloom.addColorStop(0.20, `rgba(255,246,226,${late * 0.34})`);
-  bloom.addColorStop(0.48, `rgba(239,242,255,${late * 0.22})`);
-  bloom.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = bloom;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, window.innerWidth < 700 ? 1.35 : 1.8));
+  renderer.setClearColor(0x000000, 1);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.domElement.className = 'nohope-webgl-canvas';
+  noHopeStage.insertBefore(renderer.domElement, canvas);
+  noHopeWebGLCanvas = renderer.domElement;
 
-  // Late-stage exposure wash. Gameplay values are unchanged; only visual contrast dies.
-  if (bh.p > 0.72) {
-    const wash = Math.pow((bh.p - 0.72) / 0.28, 1.65);
-    ctx.fillStyle = `rgba(255,250,240,${wash * 0.24})`;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const scene = new THREE.Scene();
+  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+  const uniforms = {
+    uTime: { value: 0 },
+    uResolution: { value: new THREE.Vector2(1, 1) },
+    uApproach: { value: 0.0 },
+    uBrightness: { value: 0.375 },
+    uInclination: { value: 76.0 }
+  };
+
+  const vertexShader = /* glsl */`
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = vec4(position.xy, 0.0, 1.0);
+    }
+  `;
+
+  const fragmentShader = /* glsl */`
+    precision highp float;
+
+    varying vec2 vUv;
+    uniform float uTime;
+    uniform vec2 uResolution;
+    uniform float uApproach;
+    uniform float uBrightness;
+    uniform float uInclination;
+
+    float hash21(vec2 p) {
+      p = fract(p * vec2(123.34, 456.21));
+      p += dot(p, p + 45.32);
+      return fract(p.x * p.y);
+    }
+
+    float noise(vec2 p) {
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+      f = f * f * (3.0 - 2.0 * f);
+      float a = hash21(i);
+      float b = hash21(i + vec2(1.0, 0.0));
+      float c = hash21(i + vec2(0.0, 1.0));
+      float d = hash21(i + vec2(1.0, 1.0));
+      return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+    }
+
+    float fbm(vec2 p) {
+      float v = 0.0;
+      float a = 0.5;
+      mat2 m = mat2(0.84, -0.54, 0.54, 0.84);
+      for (int i = 0; i < 5; i++) {
+        v += a * noise(p);
+        p = m * p * 2.03 + 13.7;
+        a *= 0.5;
+      }
+      return v;
+    }
+
+    float gauss(float x, float w) {
+      return exp(-(x * x) / max(0.00001, w * w));
+    }
+
+    float starLayer(vec2 p, float scale, float threshold, float size) {
+      vec2 g = p * scale;
+      vec2 cell = floor(g);
+      vec2 f = fract(g) - 0.5;
+      float h = hash21(cell);
+      vec2 off = vec2(hash21(cell + 2.7), hash21(cell + 8.1)) - 0.5;
+      float d = length(f - off * 0.62);
+      float s = 1.0 - smoothstep(size * 0.25, size, d);
+      s *= smoothstep(threshold, 1.0, h);
+      return s * (0.84 + 0.16 * sin(uTime * (0.65 + h * 1.8) + h * 37.0));
+    }
+
+    vec3 starField(vec2 p) {
+      float s = 0.0;
+      s += starLayer(p + vec2(0.13, 0.07), 18.0, 0.875, 0.090) * 0.36;
+      s += starLayer(p * 1.19 - vec2(0.21, 0.18), 31.0, 0.905, 0.080) * 0.54;
+      s += starLayer(p * 1.47 + vec2(0.09, 0.32), 52.0, 0.932, 0.071) * 0.76;
+      s += starLayer(p * 1.81 - vec2(0.39, 0.11), 83.0, 0.958, 0.062) * 0.98;
+      s += starLayer(p * 2.16 + vec2(0.44, 0.26), 126.0, 0.978, 0.054) * 1.16;
+      s += starLayer(p * 2.41 - vec2(0.17, 0.43), 174.0, 0.988, 0.047) * 1.28;
+
+      vec3 col = vec3(0.88, 0.93, 1.0) * s * 1.28;
+      float dust = fbm(p * 0.82 + 27.0);
+      float milky = smoothstep(0.49, 0.86, dust);
+      col += vec3(0.070, 0.082, 0.125) * milky * 1.05;
+      return col;
+    }
+
+    vec3 diskColor(float heat, float xSide) {
+      vec3 ember = vec3(0.34, 0.055, 0.010);
+      vec3 rust = vec3(0.88, 0.22, 0.035);
+      vec3 gold = vec3(1.00, 0.57, 0.19);
+      vec3 cream = vec3(1.00, 0.87, 0.66);
+      vec3 whiteHot = vec3(1.0, 0.99, 0.965);
+
+      vec3 c = mix(ember, rust, smoothstep(0.04, 0.32, heat));
+      c = mix(c, gold, smoothstep(0.24, 0.56, heat));
+      c = mix(c, cream, smoothstep(0.48, 0.79, heat));
+      c = mix(c, whiteHot, smoothstep(0.75, 1.0, heat));
+      c *= mix(vec3(1.10, 0.80, 0.66), vec3(0.84, 0.94, 1.08), xSide);
+      return c;
+    }
+
+    vec4 diskSample(float planeRadius, float streamCoord, float xSide, float mask) {
+      float spin = uTime * 0.40;
+      float flow = fbm(vec2(streamCoord * 3.4 + spin, planeRadius * 8.4 - spin * 1.5));
+      float streak = fbm(vec2(streamCoord * 11.8 - spin * 2.5, planeRadius * 27.0 + flow * 2.6));
+      float fine = noise(vec2(streamCoord * 39.0 + spin * 4.2, planeRadius * 82.0));
+      float turb = clamp(flow * 0.56 + streak * 0.34 + fine * 0.15, 0.0, 1.0);
+
+      float heat = clamp((1.0 - smoothstep(0.34, 1.14, planeRadius)) * 0.88 + turb * 0.34, 0.0, 1.0);
+      float density = 0.58 + 0.70 * smoothstep(0.15, 0.82, turb);
+      density *= 0.68 + 0.48 * smoothstep(0.12, 0.78, streak);
+
+      vec3 col = diskColor(heat, xSide);
+      col *= (0.58 + 1.70 * heat + 0.72 * turb) * uBrightness;
+      return vec4(col, clamp(mask * density, 0.0, 1.0));
+    }
+
+    vec4 accretionPlane(vec2 p, float thickness) {
+      vec2 q = vec2(p.x, p.y / thickness);
+      float r = length(q);
+      float a = atan(q.y, q.x);
+      float inner = smoothstep(0.32, 0.41, r);
+      float outer = 1.0 - smoothstep(0.82, 1.02, r);
+      float band = inner * outer;
+      float xSide = smoothstep(-1.0, 1.0, q.x / max(r, 0.001));
+      return diskSample(r, a, xSide, band);
+    }
+
+    vec4 bentDisk(vec2 p, float horizon, float inclination, float upper) {
+      float xSpan = horizon * 3.25;
+      float xn = clamp(abs(p.x) / xSpan, 0.0, 1.0);
+      float dome = sqrt(max(0.0, 1.0 - xn * xn));
+
+      float height = upper > 0.5
+        ? horizon * mix(0.82, 1.36, inclination) * dome
+        : horizon * mix(0.64, 1.08, inclination) * dome;
+
+      float centerY = upper > 0.5
+        ? horizon * 0.79 + height
+        : -horizon * 0.77 - height;
+
+      float width = mix(0.078, 0.026, xn) + dome * (upper > 0.5 ? 0.025 : 0.020);
+      float profile = gauss(p.y - centerY, width);
+
+      float join = smoothstep(0.70, 0.99, xn);
+      float sideBridge = gauss(p.y, mix(0.090, 0.030, dome)) * join;
+      float mask = max(profile * (1.0 - join * 0.35), sideBridge * 0.72);
+
+      float diskEdge = 1.02;
+      float sideCutoff = 1.0 - smoothstep(diskEdge * 0.94, diskEdge, abs(p.x));
+      mask *= sideCutoff;
+
+      float sourceY = (p.y - centerY) / max(width, 0.001) * 0.13;
+      float sourceX = p.x / max(xSpan, 0.001) * 1.18;
+      float planeRadius = clamp(0.36 + abs(sourceX) * 0.80 + abs(sourceY) * 0.15, 0.33, 1.35);
+      float streamCoord = atan(sourceY, sourceX) + p.x * 0.85;
+      float xSide = smoothstep(-xSpan, xSpan, p.x);
+
+      vec4 sampleCol = diskSample(planeRadius, streamCoord, xSide, mask);
+      if (upper < 0.5) sampleCol.a *= 0.88;
+      return sampleCol;
+    }
+
+    void main() {
+      vec2 uv = vUv * 2.0 - 1.0;
+      float aspect = uResolution.x / max(uResolution.y, 1.0);
+      uv.x *= aspect;
+
+      float approachCurve = pow(clamp(uApproach, 0.0, 1.0), 1.55);
+      float zoom = mix(1.0325, 4.60, approachCurve);
+      vec2 p = uv / zoom;
+      p.y += 0.01;
+
+      float horizon = 0.205;
+      float r = length(p);
+      float incl = clamp((uInclination - 55.0) / 31.0, 0.0, 1.0);
+      float thickness = mix(0.30, 0.105, incl);
+
+      float gravityZone = 1.0 - smoothstep(horizon * 1.08, horizon * 4.20, r);
+      float warp = gravityZone * gravityZone * 0.72;
+      vec2 lightP = p * (1.0 + warp * horizon / max(r, 0.035));
+      float capture = smoothstep(horizon * 1.02, horizon * 2.55, r);
+
+      vec3 col = vec3(0.0030, 0.0042, 0.0072);
+      vec3 absorbedStars = starField(lightP * 0.90) * 1.55;
+      absorbedStars *= mix(0.02, 1.0, capture);
+      col += absorbedStars;
+
+      float nebula = fbm(p * 0.58 + vec2(-5.3, 7.9));
+      float nebulaCapture = smoothstep(horizon * 1.05, horizon * 2.85, r);
+      col += vec3(0.055, 0.066, 0.115) * smoothstep(0.51, 0.88, nebula) * 0.92 * mix(0.10, 1.0, nebulaCapture);
+
+      float thetaLight = atan(p.y, p.x);
+      float infallZone = smoothstep(horizon * 1.05, horizon * 1.45, r)
+                       * (1.0 - smoothstep(horizon * 3.20, horizon * 4.00, r));
+      float lightFilaments = fbm(vec2(thetaLight * 7.0 - uTime * 0.14, r * 16.0 + uTime * 0.55));
+      lightFilaments = pow(smoothstep(0.64, 0.90, lightFilaments), 2.0);
+      float inwardFade = 1.0 - smoothstep(horizon * 1.08, horizon * 3.50, r);
+      col += vec3(0.68, 0.78, 1.0) * lightFilaments * infallZone * inwardFade * 0.22;
+
+      vec4 upper = bentDisk(p, horizon, incl, 1.0);
+      vec4 lower = bentDisk(p, horizon, incl, 0.0);
+      col += upper.rgb * upper.a * 1.02;
+      col += lower.rgb * lower.a * 0.96;
+
+      vec4 plane = accretionPlane(p, thickness);
+      col += plane.rgb * plane.a * 0.98;
+
+      float halo = gauss(r - horizon * 1.28, 0.082);
+      col += vec3(1.0, 0.82, 0.62) * halo * (0.10 + 0.25 * uApproach) * uBrightness;
+
+      float shadow = 1.0 - smoothstep(horizon * 0.985, horizon * 1.020, r);
+      col *= 1.0 - shadow;
+
+      vec4 front = accretionPlane(p, thickness);
+      float frontMask = 1.0 - smoothstep(-0.050, 0.060, p.y);
+      front.a *= frontMask;
+      col += front.rgb * front.a * 1.08;
+
+      float upperShadow = shadow * smoothstep(-0.032, 0.046, p.y);
+      col *= 1.0 - upperShadow;
+
+      float theta = atan(p.y, p.x);
+      float rim = gauss(r - horizon * 1.012, 0.0032);
+      float visibleRim = smoothstep(-0.16, 0.82, sin(theta));
+      float breakup = 0.44 + 0.56 * fbm(vec2(theta * 6.1 + uTime * 0.10, r * 46.0));
+      col += vec3(1.0, 0.91, 0.80) * rim * visibleRim * breakup * 0.34 * uBrightness;
+
+      col = 1.0 - exp(-col * 1.18);
+      float vignette = 1.0 - smoothstep(0.70, 1.80, length(uv * vec2(0.68, 1.0)));
+      col *= 0.82 + 0.18 * vignette;
+      col = pow(max(col, 0.0), vec3(0.86));
+
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `;
+
+  const material = new THREE.ShaderMaterial({
+    uniforms,
+    vertexShader,
+    fragmentShader,
+    depthWrite: false,
+    depthTest: false
+  });
+
+  const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
+  scene.add(quad);
+
+  function resizeRenderer() {
+    const width = Math.max(1, noHopeStage.clientWidth);
+    const height = Math.max(1, noHopeStage.clientHeight);
+    renderer.setSize(width, height, false);
+    uniforms.uResolution.value.set(renderer.domElement.width, renderer.domElement.height);
   }
 
-  ctx.restore();
-};
+  const resizeObserver = new ResizeObserver(resizeRenderer);
+  resizeObserver.observe(noHopeStage);
+  resizeRenderer();
 
-// Repaint immediately so switching/reloading No Hope never flashes the old Saturn-with-a-hangover version.
-draw();
+  noHopeWebGLReady = true;
+  renderer.setAnimationLoop(now => {
+    uniforms.uTime.value = now * 0.001;
+    uniforms.uApproach.value = state.mode === 'nohope' ? noHopeProgress() : 0.0;
+    renderer.domElement.style.visibility = state.mode === 'nohope' ? 'visible' : 'hidden';
+    renderer.render(scene, camera);
+  });
+
+  draw();
+
+  window.addEventListener('pagehide', () => {
+    renderer.setAnimationLoop(null);
+    resizeObserver.disconnect();
+    material.dispose();
+    quad.geometry.dispose();
+    renderer.dispose();
+  });
+})().catch(error => {
+  console.error('Black Hole V1 WebGL integration failed:', error);
+  noHopeWebGLReady = false;
+  if (state.mode === 'nohope') setStatus('NO HOPE visual layer failed to initialize; gameplay remains active.');
+});
