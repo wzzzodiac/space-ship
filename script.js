@@ -382,28 +382,62 @@ function blackHoleGeometry() {
 function drawBlackHole() {
   if (state.mode !== 'nohope') return;
   const bh = blackHoleGeometry();
+  const t = performance.now() * 0.001;
+  const brightness = 0.22 + bh.p * 0.78;
+
   ctx.save();
-  const glow = ctx.createRadialGradient(bh.x, bh.y, bh.radius * 0.55, bh.x, bh.y, bh.disk);
-  glow.addColorStop(0, 'rgba(0,0,0,1)');
-  glow.addColorStop(0.30, 'rgba(16,8,26,.96)');
-  glow.addColorStop(0.52, 'rgba(117,65,190,.24)');
-  glow.addColorStop(0.70, 'rgba(162,126,255,.12)');
-  glow.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = glow;
-  ctx.beginPath(); ctx.arc(bh.x, bh.y, bh.disk, 0, Math.PI * 2); ctx.fill();
-  ctx.translate(bh.x, bh.y); ctx.rotate(-0.18);
-  ctx.strokeStyle = `rgba(190,145,255,${0.30 + bh.p * 0.30})`;
-  ctx.lineWidth = 8 + bh.p * 13;
-  ctx.beginPath(); ctx.ellipse(0, 0, bh.radius * 1.72, bh.radius * 0.36, 0, 0, Math.PI * 2); ctx.stroke();
-  ctx.strokeStyle = `rgba(255,111,166,${0.16 + bh.p * 0.24})`;
+
+  const halo = ctx.createRadialGradient(bh.x, bh.y, bh.radius * 0.72, bh.x, bh.y, bh.disk * 1.18);
+  halo.addColorStop(0, 'rgba(0,0,0,1)');
+  halo.addColorStop(0.34, `rgba(255,255,255,${0.11 + brightness * 0.16})`);
+  halo.addColorStop(0.48, `rgba(227,235,255,${0.08 + brightness * 0.20})`);
+  halo.addColorStop(0.68, `rgba(173,151,255,${0.04 + brightness * 0.12})`);
+  halo.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = halo;
+  ctx.beginPath();
+  ctx.arc(bh.x, bh.y, bh.disk * 1.18, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.translate(bh.x, bh.y);
+  ctx.rotate(-0.16);
+
+  ctx.shadowColor = `rgba(255,255,255,${0.42 + brightness * 0.48})`;
+  ctx.shadowBlur = 14 + bh.p * 38;
+
+  for (let i = 0; i < 7; i++) {
+    const wobble = Math.sin(t * (0.72 + i * 0.09) + i * 1.7) * (0.018 + bh.p * 0.016);
+    const rx = bh.radius * (1.46 + i * 0.10);
+    const ry = bh.radius * (0.22 + i * 0.026 + wobble);
+    const alpha = (0.16 + bh.p * 0.24) * (1 - i * 0.075);
+    ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
+    ctx.lineWidth = 2.2 + bh.p * 4.8 + (6 - i) * 0.35;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, rx, ry, 0, t * (0.10 + i * 0.012), Math.PI * 1.55 + t * (0.08 + i * 0.01));
+    ctx.stroke();
+  }
+
+  ctx.shadowBlur = 9 + bh.p * 22;
+  ctx.strokeStyle = `rgba(255,255,255,${0.40 + bh.p * 0.42})`;
   ctx.lineWidth = 3 + bh.p * 7;
-  ctx.beginPath(); ctx.ellipse(0, 0, bh.radius * 2.05, bh.radius * 0.46, 0, 0, Math.PI * 2); ctx.stroke();
-  ctx.rotate(0.18);
+  ctx.beginPath();
+  ctx.ellipse(0, -bh.radius * 0.18, bh.radius * 1.18, bh.radius * 0.34, 0, Math.PI * 1.03, Math.PI * 1.97);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(0, bh.radius * 0.18, bh.radius * 1.18, bh.radius * 0.34, 0, Math.PI * 0.03, Math.PI * 0.97);
+  ctx.stroke();
+
+  ctx.shadowBlur = 0;
   ctx.fillStyle = '#000';
-  ctx.beginPath(); ctx.arc(0, 0, bh.radius, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = 'rgba(198,177,255,.42)';
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(0, 0, bh.radius * 1.04, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(0, 0, bh.radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = `rgba(255,255,255,${0.42 + bh.p * 0.48})`;
+  ctx.lineWidth = 1.8 + bh.p * 3.4;
+  ctx.beginPath();
+  ctx.arc(0, 0, bh.radius * 1.035, 0, Math.PI * 2);
+  ctx.stroke();
+
   ctx.restore();
 }
 
@@ -430,6 +464,25 @@ function drawBackground() {
     ctx.fillStyle = vignette;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
+}
+
+function drawNoHopeGlare() {
+  if (state.mode !== 'nohope') return;
+  const bh = blackHoleGeometry();
+  const p = bh.p;
+  const late = Math.pow(p, 2.8);
+  if (late <= 0.001) return;
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  const glare = ctx.createRadialGradient(bh.x, bh.y, Math.max(6, bh.radius * 0.72), bh.x, bh.y, Math.max(canvas.width, canvas.height) * 0.95);
+  glare.addColorStop(0, `rgba(255,255,255,${0.06 + late * 0.36})`);
+  glare.addColorStop(0.24, `rgba(245,248,255,${late * 0.27})`);
+  glare.addColorStop(0.56, `rgba(225,231,255,${late * 0.16})`);
+  glare.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = glare;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
 }
 
 function drawShip() {
@@ -483,6 +536,7 @@ function drawOverlay() {
 function draw() {
   drawBackground();
   for (const a of state.asteroids) drawAsteroid(a);
+  drawNoHopeGlare();
   for (const r of state.repairs) drawRepair(r);
   drawParticles(); drawShip(); drawOverlay();
 }
