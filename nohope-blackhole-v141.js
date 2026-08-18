@@ -226,8 +226,11 @@ drawNoHopeGlare = function () {};
       float aspect = uResolution.x / max(uResolution.y, 1.0);
       uv.x *= aspect;
 
+      // Space Ship uses the same V1 renderer, but starts closer so the disk already extends beyond the viewport.
+      // A late-only dive then pushes the final seconds past the standalone V1 close-up toward the event horizon.
       float approachCurve = pow(clamp(uApproach, 0.0, 1.0), 1.55);
-      float zoom = mix(1.0325, 4.60, approachCurve);
+      float lateDive = pow(clamp(uApproach, 0.0, 1.0), 8.0);
+      float zoom = mix(1.55, 4.60, approachCurve) + 4.0 * lateDive;
       vec2 p = uv / zoom;
       p.y += 0.01;
 
