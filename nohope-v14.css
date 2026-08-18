@@ -1,0 +1,51 @@
+/* No Hope v1.4 visual overrides */
+body.nohope .swatch.blackhole{
+  background:#020203;
+  border-color:#f4f5ff;
+  box-shadow:0 0 4px rgba(255,255,255,.75),0 0 9px rgba(185,175,255,.55);
+}
+
+.consumption-overlay.finished .consumption-message{
+  border-color:rgba(226,220,255,.58);
+  background:rgba(2,2,5,.94);
+  box-shadow:8px 0 0 rgba(162,126,255,.08),-8px 0 0 rgba(255,255,255,.025);
+}
+
+.consumption-overlay.finished .consumption-message p,
+.consumption-overlay.finished .consumption-message h2,
+.consumption-overlay.finished .consumption-message span,
+.consumption-overlay.finished .consumption-message button{
+  font-family:"Courier New",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  text-rendering:geometricPrecision;
+}
+
+.consumption-overlay.finished .consumption-message h2{
+  color:#f3efff;
+  letter-spacing:.09em;
+  text-shadow:4px 0 0 rgba(162,126,255,.72),-3px 0 0 rgba(255,255,255,.35),0 4px 0 rgba(72,46,122,.44);
+  animation:pixelSignal 1.15s steps(2,end) infinite;
+}
+
+.consumption-overlay.finished .consumption-message p,
+.consumption-overlay.finished .consumption-message span{
+  text-shadow:2px 0 0 rgba(162,126,255,.36),-1px 0 0 rgba(255,255,255,.18);
+  animation:pixelNoise 1.8s steps(2,end) infinite;
+}
+
+.consumption-overlay.finished .consumption-message button{
+  border-radius:0;
+  box-shadow:4px 4px 0 rgba(255,255,255,.10);
+}
+
+@keyframes pixelSignal{
+  0%,84%,100%{transform:translate(0,0);clip-path:inset(0 0 0 0)}
+  86%{transform:translate(3px,-1px);clip-path:inset(12% 0 48% 0)}
+  88%{transform:translate(-2px,1px);clip-path:inset(52% 0 9% 0)}
+  90%{transform:translate(1px,0);clip-path:inset(0 0 0 0)}
+}
+
+@keyframes pixelNoise{
+  0%,91%,100%{transform:translateX(0)}
+  93%{transform:translateX(2px)}
+  95%{transform:translateX(-2px)}
+}
