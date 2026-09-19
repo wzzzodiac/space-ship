@@ -44,7 +44,7 @@ drawBackground = function () {
 drawNoHopeGlare = function () {};
 
 (async () => {
-  const THREE = await import('https://cdn.jsdelivr.net/npm/three@0.185.0/build/three.module.js');
+  const THREE = await import('./vendor/three.module.js');
 
   const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, window.innerWidth < 700 ? 1.35 : 1.8));
