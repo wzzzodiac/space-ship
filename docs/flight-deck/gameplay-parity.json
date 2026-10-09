@@ -1,0 +1,32 @@
+{
+  "baselineCommit": "e6cdc68cafc6e2dde2cc3ee1fc20bbe51f20e4a6",
+  "seed": 2604,
+  "step": 0.02,
+  "steps": 1500,
+  "results": [
+    {
+      "mode": "standard",
+      "seconds": 29.99999999999945,
+      "score": 43,
+      "asteroids": 4,
+      "repairs": 1,
+      "exactStateMatch": true
+    },
+    {
+      "mode": "hardcore",
+      "seconds": 29.99999999999945,
+      "score": 70,
+      "asteroids": 5,
+      "repairs": 0,
+      "exactStateMatch": true
+    },
+    {
+      "mode": "nohope",
+      "seconds": 29.99999999999945,
+      "score": 109,
+      "asteroids": 5,
+      "repairs": 0,
+      "exactStateMatch": true
+    }
+  ]
+}

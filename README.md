@@ -67,3 +67,9 @@ See [integration contract, preview instructions and validation](docs/renderer-in
 Run `python -m http.server 8001 --bind 127.0.0.1`, open `http://127.0.0.1:8001/`,
 choose **NO HOPE** and start. The existing mission code `2604` is available for observing
 the full 68-second approach without collision damage.
+
+## Flight deck visual review
+
+The `codex/space-ship-flight-deck` branch explores a compact flight interface and procedural
+foreground graphics while preserving the published gameplay and Black Hole renderer.
+See [the review and validation](docs/flight-deck-review.md) and [before/after gallery](docs/flight-deck/index.html).
