@@ -110,6 +110,8 @@ function updateModeUI() {
   standardMode.classList.toggle('active', state.mode === 'standard');
   hardcoreMode.classList.toggle('active', hardcore);
   noHopeMode.classList.toggle('active', nohope);
+  for (const [button, mode] of [[standardMode, 'standard'], [hardcoreMode, 'hardcore'], [noHopeMode, 'nohope']]) button.setAttribute('aria-pressed', String(state.mode === mode));
+  $('horizonTelemetry').hidden = !nohope;
   modeReadout.textContent = cfg().name;
   modeDescription.textContent = nohope
     ? 'NO HOPE // 1 life, no repairs, diagonal debris, extreme speed and an approaching black hole. Survival is temporary.'
@@ -154,6 +156,7 @@ function resetGame(customStatus = null, clearCode = true) {
   document.body.classList.remove('consuming');
   consumptionOverlay.classList.remove('finished');
   consumptionOverlay.setAttribute('aria-hidden', 'true');
+  $('pageShell').inert = false;
 
   let defaultStatus = 'Flight computer ready. The asteroid field has agreed to be unreasonable.';
   if (state.mode === 'hardcore') defaultStatus = 'HARDCORE armed. One life. Denser field. Excellent decision-making.';
@@ -180,6 +183,11 @@ function speedScale() {
 }
 
 function updateHud(status) {
+  const seconds = Math.floor(state.elapsed);
+  $('elapsedReadout').textContent = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+  const approach = Math.round(noHopeProgress() * 100);
+  $('horizonProgress').value = approach;
+  $('horizonValue').textContent = `${approach}%`;
   livesReadout.textContent = Array.from({ length: state.lives }, () => '♥').join(' ') || '—';
   scoreReadout.textContent = String(state.score);
   bestReadout.textContent = String(state.best);
@@ -255,8 +263,10 @@ function beginConsumption() {
   consumptionScore.textContent = `FINAL DODGES: ${state.score}`;
   document.body.classList.add('consuming');
   consumptionOverlay.setAttribute('aria-hidden', 'false');
+  $('pageShell').inert = true;
   consumptionTimer = setTimeout(() => {
     consumptionOverlay.classList.add('finished');
+    retryButton.focus();
     state.gameOver = true;
     state.collapsing = false;
   }, 4250);
@@ -454,6 +464,7 @@ function drawBlackHole() {
 }
 
 function drawBackground() {
+  if (state.mode !== 'nohope') { FlightVisuals.background(ctx, state); return; }
   ctx.fillStyle = state.mode === 'nohope' ? '#010102' : state.mode === 'hardcore' ? '#100406' : '#030708';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   drawBlackHole();
@@ -498,36 +509,15 @@ function drawNoHopeGlare() {
 }
 
 function drawShip() {
-  const ship = state.ship;
-  const blink = state.invulnerable > 0 && Math.floor(state.invulnerable * 12) % 2 === 0;
-  if (blink) return;
-  ctx.save(); ctx.translate(ship.x, ship.y);
-  ctx.strokeStyle = state.mode === 'hardcore' ? '#ff485b' : state.mode === 'nohope' ? '#b99cff' : '#5fd1ff';
-  ctx.fillStyle = state.mode === 'hardcore' ? '#321015' : state.mode === 'nohope' ? '#11101a' : '#0b2328';
-  ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.moveTo(0,-24); ctx.lineTo(18,18); ctx.lineTo(7,13); ctx.lineTo(0,21); ctx.lineTo(-7,13); ctx.lineTo(-18,18); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.strokeStyle = state.mode === 'hardcore' ? '#ff9aa4' : state.mode === 'nohope' ? '#d7cbff' : '#69f0c1';
-  ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0,-15); ctx.lineTo(0,10); ctx.stroke();
-  const flame = 11 + Math.random() * 8;
-  ctx.strokeStyle = state.mode === 'nohope' ? '#c486ff' : '#e7d65e'; ctx.lineWidth = 3;
-  for (const x of [-6,6]) { ctx.beginPath(); ctx.moveTo(x,20); ctx.lineTo(x,20+flame); ctx.stroke(); }
-  if (state.noclip) { ctx.strokeStyle = 'rgba(210,196,255,.55)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0,0,30,0,Math.PI*2); ctx.stroke(); }
-  ctx.restore();
+  FlightVisuals.ship(ctx, state);
 }
 
 function drawAsteroid(a) {
-  ctx.save(); ctx.translate(a.x,a.y); ctx.rotate(a.rot);
-  ctx.fillStyle = state.mode === 'hardcore' ? '#6e4b4f' : state.mode === 'nohope' ? '#48454f' : '#5f6764';
-  ctx.strokeStyle = state.mode === 'hardcore' ? '#e5a4aa' : state.mode === 'nohope' ? '#aaa2b7' : '#aab5b0';
-  ctx.lineWidth = 2; ctx.beginPath();
-  a.vertices.forEach((v,i)=>{ const x=Math.cos(v.a)*a.r*v.m,y=Math.sin(v.a)*a.r*v.m; i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
-  ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.fillStyle='rgba(8,8,10,.40)'; ctx.beginPath(); ctx.arc(-a.r*.23,-a.r*.08,a.r*.2,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(a.r*.27,a.r*.2,a.r*.13,0,Math.PI*2); ctx.fill(); ctx.restore();
+  FlightVisuals.asteroid(ctx, a);
 }
 
 function drawRepair(r) {
-  const pulse = 1 + Math.sin(r.pulse) * .12;
-  ctx.save(); ctx.translate(r.x,r.y); ctx.scale(pulse,pulse); ctx.fillStyle='rgba(134,255,155,.10)'; ctx.strokeStyle='#86ff9b'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,0,r.r+5,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.fillStyle='#86ff9b'; ctx.fillRect(-3,-10,6,20); ctx.fillRect(-10,-3,20,6); ctx.restore();
+  FlightVisuals.repair(ctx, r);
 }
 
 function drawParticles() {
@@ -536,13 +526,7 @@ function drawParticles() {
 }
 
 function drawOverlay() {
-  if (state.running && !state.paused) return;
-  ctx.save();
-  ctx.fillStyle = state.mode === 'nohope' ? 'rgba(1,1,3,.72)' : state.mode === 'hardcore' ? 'rgba(20,3,6,.70)' : 'rgba(3,7,8,.64)';
-  ctx.fillRect(0,0,canvas.width,canvas.height); ctx.textAlign='center'; ctx.fillStyle='#dceae5'; ctx.font='700 28px Courier New';
-  const title = state.gameOver ? 'HULL LOST' : state.paused ? 'SIMULATION PAUSED' : state.mode === 'nohope' ? 'NO HOPE // EVENT HORIZON DETECTED' : state.mode === 'hardcore' ? 'HARDCORE FIELD STANDBY' : 'ASTEROID FIELD STANDBY';
-  ctx.fillText(title,canvas.width/2,canvas.height/2-12); ctx.fillStyle = state.mode === 'hardcore' ? '#ff485b' : state.mode === 'nohope' ? '#b99cff' : '#69f0c1'; ctx.font='15px Courier New';
-  ctx.fillText(state.gameOver ? `FINAL DODGES: ${state.score}` : state.paused ? 'press RESUME to continue' : 'press START FLIGHT',canvas.width/2,canvas.height/2+24); ctx.restore();
+  FlightVisuals.overlay(ctx, state);
 }
 
 function draw() {
@@ -576,7 +560,7 @@ resetButton.addEventListener('click',()=>resetGame(null,true));
 standardMode.addEventListener('click',()=>setMode('standard'));
 hardcoreMode.addEventListener('click',()=>setMode('hardcore'));
 noHopeMode.addEventListener('click',()=>setMode('nohope'));
-retryButton.addEventListener('click',()=>resetGame('Simulation reconstructed. Mission code required again.',true));
+retryButton.addEventListener('click',()=>{ resetGame('Simulation reconstructed. Mission code required again.',true); startButton.focus(); });
 
 resetStars();
 updateModeUI();

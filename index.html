@@ -2,115 +2,60 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#050908">
   <meta name="description" content="Mouse and touch controlled asteroid dodging game with Standard, Hardcore and No Hope flight modes.">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
   <title>Space Ship // Asteroid Avoidance Lab</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
-  <link rel="stylesheet" href="style.css?v=1.4.1">
-  <link rel="stylesheet" href="nohope-v14.css?v=black-hole-v1-1">
+  <link rel="stylesheet" href="style.css?v=flight-deck-1">
+  <link rel="stylesheet" href="nohope-v14.css?v=flight-deck-1">
 </head>
 <body>
   <main class="shell" id="pageShell">
-    <header class="hero">
-      <div>
-        <p class="eyebrow">FLIGHT LAB // ASTEROID AVOIDANCE TEST // V1.4.1</p>
-        <h1>Space Ship</h1>
-        <p class="subtitle">Move the ship with your mouse or finger, dodge incoming rocks and survive for as long as basic piloting competence allows.</p>
-      </div>
-      <a class="github-link" href="https://github.com/wzzzodiac/space-ship" target="_blank" rel="noreferrer">github ↗</a>
+    <header class="deck-header">
+      <a class="home-link" href="https://wzzzodiac.github.io/">W.ZC <span>/</span> FLIGHT LAB</a>
+      <h1>Space Ship<span> / 01</span></h1>
+      <a class="source-link" href="https://github.com/wzzzodiac/space-ship" target="_blank" rel="noreferrer">Source ↗</a>
     </header>
-
-    <section class="mode-panel" aria-label="Difficulty selection">
-      <div>
-        <p class="panel-label">FLIGHT PROFILE</p>
-        <p id="modeDescription">STANDARD // 3 initial lives, normal asteroid density, repair cells available.</p>
-      </div>
-      <div class="mode-switch" role="group" aria-label="Flight profile">
-        <button id="standardMode" class="mode-button active" type="button">STANDARD</button>
-        <button id="hardcoreMode" class="mode-button danger" type="button">HARDCORE</button>
-        <button id="noHopeMode" class="mode-button void" type="button">NO HOPE</button>
-      </div>
-    </section>
-
-    <section class="mission-panel" aria-label="Mission code">
-      <div>
-        <p class="panel-label">MISSION</p>
-        <p class="mission-hint">Optional four-character mission code. It locks for the current run and clears on reset.</p>
-      </div>
-      <div class="mission-input-wrap">
-        <span>MISSION:</span>
-        <input id="missionInput" type="text" inputmode="text" maxlength="4" autocomplete="off" spellcheck="false" placeholder="----" aria-label="Mission code">
-        <strong id="missionState">UNASSIGNED</strong>
-      </div>
-    </section>
-
-    <section class="hud-strip" aria-label="Game telemetry">
-      <div class="hud-item"><span>HULL</span><strong id="livesReadout">♥ ♥ ♥</strong></div>
-      <div class="hud-item"><span>ASTEROIDS DODGED</span><strong id="scoreReadout">0</strong></div>
-      <div class="hud-item"><span>BEST RUN</span><strong id="bestReadout">0</strong></div>
-      <div class="hud-item"><span>PROFILE</span><strong id="modeReadout">STANDARD</strong></div>
-      <div class="hud-item"><span>STATUS</span><strong id="statusReadout">STANDBY</strong></div>
-    </section>
-
-    <section class="game-layout">
-      <div class="game-card">
-        <div class="game-head">
-          <span>SIMULATION WINDOW // LIVE FLIGHT</span>
-          <span id="speedReadout">FIELD VELOCITY: 1.00×</span>
+    <div class="flight-deck">
+      <section class="flight-surface" aria-label="Flight simulation">
+        <div class="hud-strip" aria-label="Game telemetry">
+          <div class="hud-item hull"><span>HULL INTEGRITY</span><strong id="livesReadout">♥ ♥ ♥</strong></div>
+          <div class="hud-item score"><span>DODGED</span><strong id="scoreReadout">0</strong></div>
+          <div class="hud-item"><span>BEST RUN</span><strong id="bestReadout">0</strong></div>
+          <div class="hud-item"><span>FLIGHT TIME</span><strong id="elapsedReadout">00:00</strong></div>
         </div>
-        <canvas id="gameCanvas" width="900" height="620" aria-label="Space ship asteroid dodging game"></canvas>
-        <div class="control-bar">
-          <button id="startButton" class="primary" type="button">START FLIGHT</button>
-          <button id="pauseButton" type="button" disabled>PAUSE</button>
-          <button id="resetButton" type="button">RESET</button>
+        <div class="game-card">
+          <div class="game-head"><span><i class="signal-dot" aria-hidden="true"></i><strong id="statusReadout">STANDBY</strong></span><span id="speedReadout">FIELD VELOCITY: 1.00×</span></div>
+          <canvas id="gameCanvas" width="900" height="620" aria-label="Move your mouse or drag your finger here to steer the ship around asteroids"></canvas>
+          <div class="control-bar"><button id="startButton" class="primary" type="button">START FLIGHT</button><button id="pauseButton" type="button" disabled>PAUSE</button><button id="resetButton" type="button">RESET</button></div>
         </div>
-        <p class="game-help"><strong>Desktop:</strong> move your mouse inside the simulation. <strong>Mobile:</strong> press and drag anywhere in the game area. No shooting, no heroics — just avoid the rocks XD.</p>
-      </div>
-
-      <aside class="info-card">
-        <p class="panel-label">MISSION PARAMETERS</p>
-        <div class="parameter-grid">
-          <div><span>STANDARD HULL</span><strong>3 → max 5</strong></div>
-          <div><span>HARDCORE HULL</span><strong>1 → max 3</strong></div>
-          <div><span>NO HOPE HULL</span><strong>1 / no repairs</strong></div>
-          <div><span>OBSTACLES</span><strong>random rocks</strong></div>
-        </div>
-
-        <div class="status-box" id="statusBox">Flight computer ready. The asteroid field has agreed to be unreasonable.</div>
-
-        <div class="legend">
-          <span><i class="swatch ship"></i> your ship</span>
-          <span><i class="swatch asteroid"></i> asteroid</span>
-          <span><i class="swatch repair"></i> repair cell</span>
-          <span><i class="swatch blackhole"></i> approaching black hole</span>
-        </div>
-
-        <div class="notes-block">
-          <p class="panel-label">PROFILE NOTES</p>
-          <p><strong>Hardcore</strong> uses one initial life, denser and faster rocks and rarer repairs. <strong>No Hope</strong> gives one life, removes repairs completely, adds diagonal debris and places an approaching black hole behind the field. Its cinematic accretion disk grows as the event horizon approaches, with restrained exposure to keep the asteroid field readable without changing the underlying spawn or speed rules. If the event horizon reaches you, the interface itself has a bad day.</p>
-        </div>
+        <div class="flight-foot"><span>Mouse to steer · touch and drag</span><span>NO WEAPONS. JUST INSTINCT.</span></div>
+      </section>
+      <aside class="flight-console" aria-label="Flight configuration">
+        <section class="profile-section">
+          <div class="section-label"><span>FLIGHT PROFILE</span><strong id="modeReadout">STANDARD</strong></div>
+          <div class="mode-switch" role="group" aria-label="Flight profile">
+            <button id="standardMode" class="mode-button active" type="button" aria-pressed="true"><span class="mode-number">01</span><span class="mode-copy"><b>Standard</b><small>3 hull · repair support</small></span><span class="mode-mark" aria-hidden="true">↗</span></button>
+            <button id="hardcoreMode" class="mode-button" type="button" aria-pressed="false"><span class="mode-number">02</span><span class="mode-copy"><b>Hardcore</b><small>1 hull · denser debris</small></span><span class="mode-mark" aria-hidden="true">↗</span></button>
+            <button id="noHopeMode" class="mode-button" type="button" aria-pressed="false"><span class="mode-number">03</span><span class="mode-copy"><b>No Hope</b><small>1 hull · no way out</small></span><span class="mode-mark" aria-hidden="true">↗</span></button>
+          </div>
+          <p id="modeDescription">3 initial lives, normal asteroid density, repair cells available.</p>
+          <div id="horizonTelemetry" class="horizon-telemetry" hidden><label for="horizonProgress">EVENT HORIZON <output id="horizonValue">0%</output></label><progress id="horizonProgress" max="100" value="0">0%</progress></div>
+        </section>
+        <section class="mission-section"><label class="section-label" for="missionInput"><span>MISSION CODE</span><span>OPTIONAL</span></label><div class="mission-input-wrap"><input id="missionInput" type="text" inputmode="text" maxlength="4" autocomplete="off" spellcheck="false" placeholder="----" aria-describedby="missionHint"><strong id="missionState">UNASSIGNED</strong></div><p id="missionHint">Four characters. Locks at launch, clears on reset.</p></section>
+        <section class="flight-log"><p class="section-label">FLIGHT COMPUTER</p><p class="status-box" id="statusBox" role="status">Ready for departure.</p></section>
+        <details class="field-guide"><summary>Field guide <span aria-hidden="true">+</span></summary><div class="legend"><span><i class="swatch ship"></i> Your ship — keep moving</span><span><i class="swatch asteroid"></i> Debris — avoid contact</span><span><i class="swatch repair"></i> Repair cell — recover hull</span></div><p>Standard starts with 3 hull and can reach 5. Hardcore starts with 1 and can reach 3. No Hope has one life, no repairs and a 68-second approach to the horizon.</p><p>Steer with your mouse or press and drag within the flight window. Pause anytime. Mission 2604 enables observer mode; the horizon still wins.</p></details>
+        <div class="console-signature"><span>FLIGHT RECORDER / ONLINE</span><span>W.ZC — EXPERIMENTAL SYSTEMS</span></div>
       </aside>
-    </section>
-
-    <footer>
-      <span>NO WEAPONS // NO BRAKES // QUESTIONABLE INSURANCE</span>
-      <span>v1.4.1 // ACCRETION LENSING PROTOCOL</span>
-    </footer>
-  </main>
-
-  <div class="consumption-overlay" id="consumptionOverlay" aria-hidden="true">
-    <div class="consumption-core"></div>
-    <div class="consumption-message">
-      <p>EVENT HORIZON // CONNECTION LOST</p>
-      <h2>CONSUMED</h2>
-      <span id="consumptionScore">FINAL DODGES: 0</span>
-      <button id="retryButton" type="button">RECONSTRUCT + RETRY</button>
     </div>
+  </main>
+  <div class="consumption-overlay" id="consumptionOverlay" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="consumptionTitle">
+    <div class="consumption-core"></div><div class="consumption-message"><p>EVENT HORIZON / CONNECTION LOST</p><h2 id="consumptionTitle">CONSUMED</h2><span id="consumptionScore">FINAL DODGES: 0</span><button id="retryButton" type="button">RECONSTRUCT + RETRY</button></div>
   </div>
-
-  <script src="script.js?v=1.4.1"></script>
+  <script src="flight-visuals.js?v=1"></script>
+  <script src="script.js?v=flight-deck-1"></script>
   <script src="nohope-blackhole-v141.js?v=cinematic-1"></script>
 </body>
 </html>

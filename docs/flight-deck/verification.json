@@ -1,0 +1,96 @@
+{
+  "checks": [
+    "desktop: controls and canvas visible without scrolling",
+    "desktop: no horizontal overflow",
+    "desktop: hidden consumption cannot receive focus",
+    "desktop/standard: selected profile is announced",
+    "desktop/standard: asteroids spawn and mode buttons lock",
+    "desktop/standard: pause freezes simulation and WebGL",
+    "desktop/standard: reset clears run and mission",
+    "desktop/hardcore: selected profile is announced",
+    "desktop/hardcore: asteroids spawn and mode buttons lock",
+    "desktop/hardcore: pause freezes simulation and WebGL",
+    "desktop/hardcore: reset clears run and mission",
+    "desktop/nohope: selected profile is announced",
+    "desktop/nohope: asteroids spawn and mode buttons lock",
+    "desktop/nohope: pause freezes simulation and WebGL",
+    "desktop/nohope: reset clears run and mission",
+    "desktop: resize 360×800",
+    "desktop: resize 768×1024",
+    "desktop: resize 844×390",
+    "desktop: resize 1920×1080",
+    "mobile: controls and canvas visible without scrolling",
+    "mobile: no horizontal overflow",
+    "mobile: hidden consumption cannot receive focus",
+    "mobile/standard: selected profile is announced",
+    "mobile/standard: asteroids spawn and mode buttons lock",
+    "mobile/standard: pause freezes simulation and WebGL",
+    "mobile/standard: reset clears run and mission",
+    "mobile/hardcore: selected profile is announced",
+    "mobile/hardcore: asteroids spawn and mode buttons lock",
+    "mobile/hardcore: pause freezes simulation and WebGL",
+    "mobile/hardcore: reset clears run and mission",
+    "mobile/nohope: selected profile is announced",
+    "mobile/nohope: asteroids spawn and mode buttons lock",
+    "mobile/nohope: pause freezes simulation and WebGL",
+    "mobile/nohope: reset clears run and mission",
+    "touch drag/release still controls ship",
+    "mobile: resize 360×800",
+    "mobile: resize 768×1024",
+    "mobile: resize 844×390",
+    "mobile: resize 1920×1080",
+    "standard: ordinary collision damage preserved",
+    "hardcore: ordinary collision damage preserved",
+    "nohope: ordinary collision damage preserved",
+    "repair restores hull and respects maximum",
+    "new elapsed and horizon readouts match simulation",
+    "consumption disables background interaction",
+    "consumption puts keyboard focus on retry",
+    "keyboard retry restores interface and focus",
+    "reduced-motion consumption remains visible",
+    "2D fallback remains playable",
+    "no unexpected browser errors",
+    "all resources load"
+  ],
+  "errors": [],
+  "failedResources": [],
+  "performance": [
+    {
+      "mode": "standard",
+      "viewport": "desktop",
+      "fps": 119.53110577810595,
+      "p95": 8.5
+    },
+    {
+      "mode": "hardcore",
+      "viewport": "desktop",
+      "fps": 120.00545479339971,
+      "p95": 8.400000000000546
+    },
+    {
+      "mode": "nohope",
+      "viewport": "desktop",
+      "fps": 120.00545479339971,
+      "p95": 8.5
+    },
+    {
+      "mode": "standard",
+      "viewport": "mobile",
+      "fps": 119.99454570246805,
+      "p95": 8.5
+    },
+    {
+      "mode": "hardcore",
+      "viewport": "mobile",
+      "fps": 119.98909190073624,
+      "p95": 8.5
+    },
+    {
+      "mode": "nohope",
+      "viewport": "mobile",
+      "fps": 120.00545479339971,
+      "p95": 8.5
+    }
+  ],
+  "browser": "154.0.4258.62"
+}
