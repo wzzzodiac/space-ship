@@ -59,3 +59,11 @@ Plain HTML, CSS and JavaScript using a responsive `<canvas>` game area, CSS anim
 ## Visual direction
 
 Dark engineering-console / flight-lab style with profile-specific visual themes. No Hope switches to a near-black violet interface and progressively lets the black hole consume the simulation.
+
+## Cinematic V1 integration preview
+
+The review branch integrates the evolved Black Hole V1 renderer without a broader game redesign.
+See [integration contract, preview instructions and validation](docs/renderer-integration.md).
+Run `python -m http.server 8001 --bind 127.0.0.1`, open `http://127.0.0.1:8001/`,
+choose **NO HOPE** and start. The existing mission code `2604` is available for observing
+the full 68-second approach without collision damage.

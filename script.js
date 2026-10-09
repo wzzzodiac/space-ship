@@ -53,6 +53,14 @@ const state = {
   ship: { x: 450, y: 490, targetX: 450, targetY: 490, r: 18 }
 };
 
+let animationFrame = 0;
+let consumptionTimer = 0;
+
+function queueFrame() {
+  cancelAnimationFrame(animationFrame);
+  animationFrame = requestAnimationFrame(loop);
+}
+
 function cfg() { return profiles[state.mode]; }
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 function rand(a, b) { return a + Math.random() * (b - a); }
@@ -111,6 +119,8 @@ function updateModeUI() {
 }
 
 function resetGame(customStatus = null, clearCode = true) {
+  cancelAnimationFrame(animationFrame);
+  clearTimeout(consumptionTimer);
   const c = cfg();
   state.running = false;
   state.paused = false;
@@ -198,16 +208,18 @@ function startGame() {
   else if (state.mode === 'hardcore') setStatus('HARDCORE FLIGHT // the asteroid field has stopped pretending to be fair.');
   else setStatus('Flight started. Try not to convert the ship into a geology sample.');
   updateHud('ACTIVE');
-  requestAnimationFrame(loop);
+  queueFrame();
 }
 
 function togglePause() {
   if (!state.running || state.gameOver || state.collapsing) return;
+  cancelAnimationFrame(animationFrame);
   state.paused = !state.paused;
   pauseButton.textContent = state.paused ? 'RESUME' : 'PAUSE';
   updateHud(state.paused ? 'PAUSED' : 'ACTIVE');
   setStatus(state.paused ? 'Simulation paused. Even the black hole must respect browser tabs.' : 'Flight resumed. Bad decisions continue.');
-  if (!state.paused) { state.lastTime = performance.now(); requestAnimationFrame(loop); }
+  draw();
+  if (!state.paused) { state.lastTime = performance.now(); queueFrame(); }
 }
 
 function saveBest() {
@@ -243,7 +255,7 @@ function beginConsumption() {
   consumptionScore.textContent = `FINAL DODGES: ${state.score}`;
   document.body.classList.add('consuming');
   consumptionOverlay.setAttribute('aria-hidden', 'false');
-  setTimeout(() => {
+  consumptionTimer = setTimeout(() => {
     consumptionOverlay.classList.add('finished');
     state.gameOver = true;
     state.collapsing = false;
@@ -545,7 +557,7 @@ function loop(now) {
   if (!state.running || state.paused || state.gameOver || state.collapsing) return;
   const dt = Math.min(.035,(now-state.lastTime)/1000||0);
   state.lastTime = now; update(dt); draw();
-  if (state.running && !state.paused && !state.gameOver && !state.collapsing) requestAnimationFrame(loop);
+  if (state.running && !state.paused && !state.gameOver && !state.collapsing) queueFrame();
 }
 
 function pointerToCanvas(e) {
